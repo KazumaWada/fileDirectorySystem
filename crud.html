@@ -1,0 +1,308 @@
+<!-- touch [fileOrDirName]: 
+// 指定した名前のファイルをカレントディレクトリに作成します。ファイルまたはディレクトリが既に存在する場合は、ノードのdateModified値を現在の日付に更新します。
+mkDir [dirName]: 
+// 与えられた名前でカレントディレクトリに新しいディレクトリを作成します。
+ls [?fileOrDirName]: 
+// ターゲットノードがディレクトリの場合、ターゲットディレクトリノードの直下の全てのファイルリストを出力します。ターゲットノードがファイルの場合、与えられたノードのみ出力します。引数が存在しない場合、カレントディレクトリの全てのファイルリストを出力します。
+cd [..| dirName]: 
+// 現在の作業ディレクトリを指定されたものに変更します。引数が'..'の場合はカレントディレクトリを親ディレクトリに、そうでない場合はカレントディレクトリをカレントディレクトリ内のdirNameに変更します。
+pwd []: 
+// 現在の作業ディレクトリのパスを出力します。
+print [fileName]: 
+// カレントディレクトリ内の指定されたfileNameの.content値（ファイルの情報）を表示します。
+setContent [fileName]: 
+// 与えられたfileNameの.content値をカレントディレクトリに設定します。
+rm [fileOrDirName]: 
+// 指定したfileOrDirNameのファイルまたはディレクトリをカレントディレクトリから削除します。 -->
+
+
+
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+
+    <title>Command Line Interface</title>
+
+    <style>
+        .vh-60 {
+            height: 60vh;
+        }
+
+        h1,h2,h3,h4,h5,h6,p {
+            margin: 0;
+            color:white;
+        }
+
+        .bg-header {
+            background: #2A69AE;
+        }
+
+        .bg-result {
+            background: #32363D;
+        }
+        #CLIOutputDiv
+        {
+            overflow: scroll;
+        }
+            </style>
+
+  </head>
+  <body>
+    <div class="bg-success vh-100 d-flex flex-column justify-content-center">
+        <div class="container col-8 px-0 bg-result">
+            <div class="text-center bg-header py-2">
+                <h1>File System</h1>
+                <h6> (Queries can take a couple seconds) </h6>
+            </div>
+    
+            <div id="CLIOutputDiv" class="container vh-60 bg-dark p-3 text-white">
+            </div>
+    
+    
+            <div class="container input-group py-2">
+                <input type="text" id ="CLITextInput" class="form-control" placeholder="type any command" aria-label="Username" aria-describedby="addon-wrapping">
+            </div>
+        </div>
+    </div>
+    </body>
+</html><!-- CLI Book Lookup Console version -->
+
+<script>
+////ファイルシステムの構造は全て木構造で表す。配列は使わない////
+//ファイル構造は全部.nextで表すことにした。なぜなら配列で表していくと、想像がしづらく実装に支障が出るのではないかと思ったから。
+//ファイルの中に配列を作って実装すると、マトリョーシカのようになって混乱した。
+//そこでdirが作られたら、木構造で末尾に挿入し、
+//lsなどではcurrentNode.nextを幅優先で走査してイコールだったらcount+=とかでやっていくことにした。
+
+//ユーザーのinputのid
+let CLITextInput = document.getElementById("CLITextInput");
+let CLIOutputDiv = document.getElementById("CLIOutputDiv");
+
+class File {
+  constructor(fileName) {
+    this.fileName = fileName;
+  }
+}
+
+class Directory {
+  constructor(name) {
+    this.name = name;
+    //ls,rmとか現在のdirの子供のみを取り扱うので、配列で表した方がいい。
+    this.children = [];
+    //ここに.nextを定義すると、同じ階層にdirが作られてもそれが.nextとなってしまうから。
+    //じゃあ、どこに.nextを配置するのが良いのか?
+    //そもそもどのコマンド入力で.nextになるのが望ましいのか?
+  }
+
+  addChild(node) {
+    //thisは、Directory.addChild(node)
+    //つまり、currentNode.addChild(node)
+    //this == currentNode
+    //これで全て以下のコードが分かる
+
+    this.children.push(node);
+    //parent
+    node.parent = this;
+    //子
+    this.next = node;
+  }
+  //特定の子供
+  getChild(name) {
+    return this.children.find((child) => child.name === name);
+  }
+  //子供全部
+  getChildren() {
+    return this.children;
+  }
+}
+
+let rootDirectory = new Directory("root");
+//currentは動いてしまうし、newすると、作ってしまうから。
+//let rootDirectoryPointer = rootDirectory;
+let currentDirectory = rootDirectory;
+//cdで変わるので、グローバルにしておく。
+let initialDir = "~";
+//event ユーザーが何かしらタイプし始めたら、
+CLITextInput.addEventListener("keyup", (event) => submitSearch(event));
+
+function submitSearch(event) {
+  if (event.key == "Enter") {
+    let errorMessage = "invalid request";
+    //空欄だったら
+    // if (CLITextInput.value == "") {
+    //   let message = errorMessage;
+    //   return appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+    // }
+
+    //ユーザーのinputを空白ごとに配列の要素にする
+    //グローバルスコープに書いてしまうと、初期状態(つまり空欄)が維持されて
+    //ユーザーが入力したとしても常に空欄を返してしまう。
+    let CLIInputArr = CLITextInput.value.trim().split(" ");
+    
+    if (CLIInputArr[0] == "touch") {
+      let message = "created file " + CLIInputArr[1];
+      appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+      //ファイルを作成
+      let file = new File(CLIInputArr[1]);
+      currentDirectory.addChild(file);
+      CLITextInput.value = "";
+    } 
+
+    //mkdir
+    else if (CLIInputArr[0] == "mkdir") {
+      let message = "created dir '" + CLIInputArr[1] + "'";
+      appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+      //ディレクトリを作成
+      let directory = new Directory(CLIInputArr[1]);
+      //生成された[]に[1]のファイル名.pushする
+      //つまりdirは配列で管理されている。
+      currentDirectory.addChild(directory);
+      CLITextInput.value = "";
+    }
+
+    //pwd
+    //このコマンドはcurrentDirectoryを変えてはいけない。
+    //ただroot->currentDirectoryまでのpathを表示するだけだから。
+   else if(CLIInputArr[0] == "pwd"){
+    let message = ``;
+
+    //現在のdirがrootだったら、
+    if(currentDirectory.name == "root"){
+      message ="root/";
+    }
+    //currentDirectoryがroot以外のdirだったら、
+    else{
+      let tempCurrentDirectory = rootDirectory;
+      while(tempCurrentDirectory != currentDirectory){
+        message += tempCurrentDirectory.name + "/";
+        tempCurrentDirectory = tempCurrentDirectory.next;
+      }
+    }
+    
+    appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+    CLITextInput.value = "";
+  }
+
+    //ls
+    else if (CLIInputArr[0] == "ls") {
+      let message = "list: ";
+      let children = currentDirectory.getChildren();
+      if (children.length === 0) {
+        appendInputValue(CLIOutputDiv, CLITextInput.value, "no list");
+        CLITextInput.value = "";
+      } else {
+        children.forEach((child) => {
+          if (child instanceof File) {
+            message += child.fileName + ", ";
+          } else if (child instanceof Directory) {
+            message += child.name + ", ";
+          }
+        });
+        appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+        CLITextInput.value = "";
+      }
+    } 
+
+  //rm
+  else if (CLIInputArr[0] == "rm") {
+    //まず[1]のみを削除。//
+    //[1]のnodeを取得
+    let target = currentDirectory.getChild(CLIInputArr[1]);
+    //currentDirectory.childrenのindexを取得
+    let targetIndex = currentDirectory.children.indexOf(target);
+    //配列から削除
+    currentDirectory.children.splice(targetIndex,1);
+    //targetのchildrenを全て削除(childrenのchildrenはどうするんだろう??)
+    let message = `removed ${CLIInputArr[1]} !`;
+    appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+    CLITextInput.value = "";
+  }
+
+  //cd ..
+  else if(CLIInputArr[0] == "cd" && CLIInputArr[1] == ".."){
+    currentDirectory = currentDirectory.parent;
+    initialDir = currentDirectory.name;
+    let message = `directory is now ${currentDirectory.name}`;
+    appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+    //空にする
+    CLITextInput.value = "";
+  }
+
+  //cd  
+  //遡るのは..コマンドのみ。
+  else if (CLIInputArr[0] == "cd") {
+  let message = "";
+  //cd dir名/dir名/dir名
+  if(CLIInputArr[1].includes("/")){
+    let pathArr = CLIInputArr[1].trim().split("/");
+
+    for(let i=0; i<pathArr.length; i++){
+      //pathArr[i]が実際に存在したら
+      if(currentDirectory.getChild(pathArr[i]))
+        currentDirectory = currentDirectory.getChild(pathArr[i]);
+      //存在しなかったら
+      else{
+        message = `no such file or directory: ${CLIInputArr[1]}`
+        appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+        CLITextInput.value = "";
+      }
+    }
+    initialDir = currentDirectory.name;
+    message = `directory is now ${currentDirectory.name}`;
+    appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+    CLITextInput.value = "";
+  }
+
+  //cd dir名
+  else if(currentDirectory.getChild(CLIInputArr[1])){
+    console.log("if");
+    let target = currentDirectory.getChild(CLIInputArr[1]);
+    currentDirectory = target;
+    //dir名 % 空欄
+    initialDir = target.name;
+    message = `Changed directory to ${target.name}`;
+    appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+    CLITextInput.value = "";
+   
+   }
+  //ユーザーがcdで遡ろうとした時。
+  //前回のcurrentNodeと[1]が違う時。
+  else if(!currentDirectory.getChild(CLIInputArr[1])){
+    console.log("else if");   
+      message = `no such file or directory: ${CLIInputArr[1]}`
+      appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+      CLITextInput.value = "";
+    }  
+  }
+
+  //例外処理
+  else{
+      appendInputValue(CLIOutputDiv, errorMessage, "");
+  }
+}
+}
+
+
+function appendInputValue(parent, value, message) {
+  
+  parent.innerHTML +=
+    `<p class="m-0">
+      <span style='color:green'>student</span>
+      <span style='color:magenta'>@</span>
+      <span style='color:blue'>KAZ </span>
+      ${initialDir} % ${value}<br> 
+      ${message}
+    </p>`;
+}
+
+
+
+
+</script>
