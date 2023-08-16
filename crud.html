@@ -13,8 +13,35 @@ print [fileName]:
 setContent [fileName]: 
 // 与えられたfileNameの.content値をカレントディレクトリに設定します。
 rm [fileOrDirName]: 
-// 指定したfileOrDirNameのファイルまたはディレクトリをカレントディレクトリから削除します。 -->
+// 指定したfileOrDirNameのファイルまたはディレクトリをカレントディレクトリから削除します。 
 
+//第2フェーズ
+https://recursionist.io/dashboard/course/20/lesson/519
+
+- 一回のコマンド入力で、ファイルシステム内をどこでも行けるようにする
+% file,dir "/"では時ある場合 -> pathは必ずrootから。(絶対path)
+% file,dir dir名/dir名 ->currentDirから(相対path)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-->
 
 
 
@@ -75,12 +102,6 @@ rm [fileOrDirName]:
 </html><!-- CLI Book Lookup Console version -->
 
 <script>
-////ファイルシステムの構造は全て木構造で表す。配列は使わない////
-//ファイル構造は全部.nextで表すことにした。なぜなら配列で表していくと、想像がしづらく実装に支障が出るのではないかと思ったから。
-//ファイルの中に配列を作って実装すると、マトリョーシカのようになって混乱した。
-//そこでdirが作られたら、木構造で末尾に挿入し、
-//lsなどではcurrentNode.nextを幅優先で走査してイコールだったらcount+=とかでやっていくことにした。
-
 //ユーザーのinputのid
 let CLITextInput = document.getElementById("CLITextInput");
 let CLIOutputDiv = document.getElementById("CLIOutputDiv");
@@ -88,6 +109,8 @@ let CLIOutputDiv = document.getElementById("CLIOutputDiv");
 class File {
   constructor(fileName) {
     this.fileName = fileName;
+    //this.name = name;
+    this.content = "";
   }
 }
 
@@ -116,6 +139,10 @@ class Directory {
   //特定の子供
   getChild(name) {
     return this.children.find((child) => child.name === name);
+  }
+  //rm用に指定された特定のfileのみを取得
+  getChildFile(fileName){
+    return this.children.find((child) => child.fileName === fileName);
   }
   //子供全部
   getChildren() {
@@ -211,16 +238,34 @@ function submitSearch(event) {
     } 
 
   //rm
+  //同じ名前のfileが複数あった場合はまだ考えていない。(dirも)
+  //↑今の所、indexOfだから0に近いindexが当てはまる。
+  //このコマンドは通常、fileのみを削除する事ができる。
+  //特定のNodeを削除する場合、双方向で実現する
+  //https://recursionist.io/dashboard/course/3/lesson/406
   else if (CLIInputArr[0] == "rm") {
-    //まず[1]のみを削除。//
-    //[1]のnodeを取得
-    let target = currentDirectory.getChild(CLIInputArr[1]);
+    let message = "";
+    
+    let targetFile = currentDirectory.getChildFile(CLIInputArr[1]);
+    let targetDir = currentDirectory.getChild(CLIInputArr[1]);
+
+    if(targetFile){
     //currentDirectory.childrenのindexを取得
-    let targetIndex = currentDirectory.children.indexOf(target);
+    let targetIndex = currentDirectory.children.indexOf(targetFile);
     //配列から削除
     currentDirectory.children.splice(targetIndex,1);
-    //targetのchildrenを全て削除(childrenのchildrenはどうするんだろう??)
-    let message = `removed ${CLIInputArr[1]} !`;
+    message = `removed ${CLIInputArr[1]} !`;
+    }
+    else if(targetDir){
+    //currentDirectory.childrenのindexを取得
+    let targetIndex = currentDirectory.children.indexOf(targetDir);
+    //配列から削除
+    currentDirectory.children.splice(targetIndex,1);
+    message = `removed ${CLIInputArr[1]} !`;
+    }
+    else{
+      message = `that dir/file doesnt exist`;
+    }
     appendInputValue(CLIOutputDiv, CLITextInput.value, message);
     CLITextInput.value = "";
   }
@@ -282,12 +327,51 @@ function submitSearch(event) {
     }  
   }
 
-  //例外処理
-  else{
+  else if (CLIInputArr[0] == "setContent") {
+  let message = "";
+  //"setContent file名 content"にしたらenterの必要ないね
+  let targetFile = currentDirectory.getChildFile(CLIInputArr[1]);
+  //let file = CLIInputArr[1];
+  // もしファイル名が存在したら、
+  if (targetFile && CLIInputArr[2] !== undefined) {
+    console.log(CLIInputArr[2]);
+      // let targetFile = currentDirectory.getChildFile(file);
+        // ファイルの内容をセット
+    targetFile.content = CLIInputArr[2]; 
+    message = `${targetFile.fileName}'s content saved. content: ${targetFile.content}`;
+  }
+  //この機能は実装しない↓//
+  //存在しなかったらその場で新しく作り、それにcontentを追加
+  // else if(!targetFile){
+  //   console.log("make file.name[1] then add content in it");
+  // } 
+  
+  else {
+    message = `file doesnt exist or you just wrote nothing lol`;
+  }
+  appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+  CLITextInput.value = "";
+}
+
+else if (CLIInputArr[0] == "print") {
+  let message = "";
+  let targetFile = currentDirectory.getChildFile(CLIInputArr[1]);
+  if(targetFile && targetFile.content != undefined)
+  message = targetFile.content;
+  else message ="no content or file dosent exist";
+
+  appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+  CLITextInput.value = "";
+}
+
+//例外処理
+else{
       appendInputValue(CLIOutputDiv, errorMessage, "");
+      CLITextInput.value = "";
   }
 }
 }
+
 
 
 function appendInputValue(parent, value, message) {
