@@ -212,7 +212,8 @@ function submitSearch(event) {
         tempCurrentDirectory = tempCurrentDirectory.next;
       }
     }
-    
+    //足りなかったからここでひとつ足している。
+      message += currentDirectory.name;
     appendInputValue(CLIOutputDiv, CLITextInput.value, message);
     CLITextInput.value = "";
   }
@@ -280,32 +281,82 @@ function submitSearch(event) {
     CLITextInput.value = "";
   }
 
-  //cd  
-  //遡るのは..コマンドのみ。
+  //cd
   else if (CLIInputArr[0] == "cd") {
   let message = "";
-  //cd dir名/dir名/dir名
-  if(CLIInputArr[1].includes("/")){
-    let pathArr = CLIInputArr[1].trim().split("/");
-
-    for(let i=0; i<pathArr.length; i++){
-      //pathArr[i]が実際に存在したら
-      if(currentDirectory.getChild(pathArr[i]))
-        currentDirectory = currentDirectory.getChild(pathArr[i]);
-      //存在しなかったら
-      else{
-        message = `no such file or directory: ${CLIInputArr[1]}`
-        appendInputValue(CLIOutputDiv, CLITextInput.value, message);
-        CLITextInput.value = "";
+  //Absolute path
+  if(CLIInputArr[1][0] == "/"){
+    let target = rootDirectory;
+    //これをやると、["","root",,,]になる
+    let APathArr = CLIInputArr[1].trim().split("/");
+    console.log(APathArr);
+    //[0]はただの空欄だから。
+    for(let i=0; i<APathArr.length-1; i++){
+      if(APathArr[i] == "")continue;
+      //rootからのpathと,ユーザーのpathが同じだったら
+      else if(target.name == APathArr[i]){
+        console.log("target.name" + target.name + "==" + "APathArr[i]" + APathArr[i]);
+        target = target.next;    
       }
+      else if(target.name != APathArr[i]){
+        message = "this path doesnt exist brah";
+        //break;
+      } 
+        
     }
-    initialDir = currentDirectory.name;
-    message = `directory is now ${currentDirectory.name}`;
+
+    //errorが無かったら、
+    console.log("ループ後のtarget.name" + target.name);
+    if(message == ""){
+      // console.log("currentDirectory" + currentDirectory);
+      // console.log("target" + target);
+      //文字列のみ成功。nodeは異なっている。
+      initialDir = APathArr[APathArr.length-1];
+      currentDirectory = target;
+      message = `directory is now ${APathArr[APathArr.length-1]}`;
+      
+      
+    }
+    
     appendInputValue(CLIOutputDiv, CLITextInput.value, message);
     CLITextInput.value = "";
   }
 
-  //cd dir名
+  //Relative Path//
+  else if(CLIInputArr[1].indexOf("/") !== -1){
+    let target = currentDirectory;
+    //"a/b/c"->[a,b,c]
+    let RPathArr = CLIInputArr[1].trim().split("/");
+    //最初のがcurrentDirectoryと等しかったら
+    if(currentDirectory.name == CLIInputArr[1][0]){
+      //ループ//
+      for(let i=0; i<RPathArr.length-1; i++){
+      //rootからのpathと,ユーザーのpathが同じだったら
+      if(target.name == RPathArr[i]){
+        console.log("target.name" + target.name + "==" + "APathArr[i]" + RPathArr[i]);
+        target = target.next;    
+      }
+      else if(target.name != RPathArr[i]){
+        message = "this path doesnt exist brah";
+        //break;
+      } 
+      //ループ終了//
+    }
+  }
+  if(message == ""){
+      // console.log("currentDirectory" + currentDirectory);
+      // console.log("target" + target);
+      //文字列のみ成功。nodeは異なっている。
+      initialDir = RPathArr[RPathArr.length-1];
+      currentDirectory = target;
+      message = `directory is now ${RPathArr[RPathArr.length-1]}`; 
+    }
+    appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+    CLITextInput.value = "";
+  }
+  //Relative Path//
+
+  //dir一つのみ
   else if(currentDirectory.getChild(CLIInputArr[1])){
     console.log("if");
     let target = currentDirectory.getChild(CLIInputArr[1]);
