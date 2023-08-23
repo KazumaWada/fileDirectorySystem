@@ -220,12 +220,83 @@ function submitSearch(event) {
 
     //ls
     else if (CLIInputArr[0] == "ls") {
-      let message = "list: ";
-      let children = currentDirectory.getChildren();
-      if (children.length === 0) {
-        appendInputValue(CLIOutputDiv, CLITextInput.value, "no list");
-        CLITextInput.value = "";
-      } else {
+      let message = "";
+      
+      //ls Absolute//
+      //lsの場合は、[1]無しで入力してくることがあるから。
+      if(CLIInputArr[1] && CLIInputArr[1][0] === "/"){
+        console.log("Absolute");
+        let target = rootDirectory;
+        let APathArr = CLIInputArr[1].trim().split("/");      
+      //最後のdirまで辿る
+      for(let i=0; i<APathArr.length-1; i++){
+      //[0]はただの空欄だから。
+      if(i == 0)continue;
+      //rootからのpathと,ユーザーのpathが同じだったら
+      else if(target.name == APathArr[i]){
+        target = target.next;    
+       }
+      else if(target.name != APathArr[i]){
+        message = "this path doesnt exist brah";
+        //break;
+      }   
+      }
+
+      let children = target.getChildren();
+      //loop後
+      if(message == ""){
+        children.forEach((child) => {
+          if (child instanceof File) {
+            message += target.fileName + ", ";
+          } else if (child instanceof Directory) {
+            message += child.name + ", ";
+          }
+          
+        });    
+      }
+
+      }
+      //ls Absolute//
+
+      //ls Relative//
+      else if(CLIInputArr[1] && CLIInputArr[1].indexOf("/") !== -1){
+        console.log("Relative");
+        let message = "";
+        let target = currentDirectory;
+        let RPathArr = CLIInputArr[1].trim().split("/"); 
+
+      for(let i=0; i<RPathArr.length-1; i++){
+      //[0]はただの空欄だから。
+      if(i == 0)continue;
+      //rootからのpathと,ユーザーのpathが同じだったら
+      else if(target.name == RPathArr[i]){
+        target = target.next;    
+       }
+      else if(target.name != RPathArr[i]){
+        message = "this path doesnt exist brah";
+        //break;
+      }   
+      }
+
+      let children = target.getChildren();
+      //loop後
+      if(message == ""){
+        children.forEach((child) => {
+          if (child instanceof File) {
+            message += target.fileName + ", ";
+          } else if (child instanceof Directory) {
+            message += child.name + ", ";
+          }
+          
+        });    
+      }
+
+      }
+      //ls Relative//
+
+      //dir指定がないls
+      else {
+        children = currentDirectory.getChildren();
         children.forEach((child) => {
           if (child instanceof File) {
             message += child.fileName + ", ";
@@ -233,9 +304,10 @@ function submitSearch(event) {
             message += child.name + ", ";
           }
         });
-        appendInputValue(CLIOutputDiv, CLITextInput.value, message);
-        CLITextInput.value = "";
       }
+
+      appendInputValue(CLIOutputDiv, CLITextInput.value, message);
+      CLITextInput.value = "";
     } 
 
   //rm
@@ -284,18 +356,16 @@ function submitSearch(event) {
   //cd
   else if (CLIInputArr[0] == "cd") {
   let message = "";
-  //Absolute path
+  //Absolute path//
   if(CLIInputArr[1][0] == "/"){
     let target = rootDirectory;
     //これをやると、["","root",,,]になる
     let APathArr = CLIInputArr[1].trim().split("/");
-    console.log(APathArr);
-    //[0]はただの空欄だから。
     for(let i=0; i<APathArr.length-1; i++){
+      //[0]はただの空欄だから。
       if(APathArr[i] == "")continue;
       //rootからのpathと,ユーザーのpathが同じだったら
       else if(target.name == APathArr[i]){
-        console.log("target.name" + target.name + "==" + "APathArr[i]" + APathArr[i]);
         target = target.next;    
       }
       else if(target.name != APathArr[i]){
@@ -307,10 +377,7 @@ function submitSearch(event) {
 
     //errorが無かったら、
     console.log("ループ後のtarget.name" + target.name);
-    if(message == ""){
-      // console.log("currentDirectory" + currentDirectory);
-      // console.log("target" + target);
-      //文字列のみ成功。nodeは異なっている。
+    if(message != "this path doesnt exist brah"){
       initialDir = APathArr[APathArr.length-1];
       currentDirectory = target;
       message = `directory is now ${APathArr[APathArr.length-1]}`;
@@ -321,6 +388,7 @@ function submitSearch(event) {
     appendInputValue(CLIOutputDiv, CLITextInput.value, message);
     CLITextInput.value = "";
   }
+  //Absolute path//
 
   //Relative Path//
   else if(CLIInputArr[1].indexOf("/") !== -1){
