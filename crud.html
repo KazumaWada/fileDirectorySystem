@@ -321,8 +321,40 @@ function submitSearch(event) {
     
     let targetFile = currentDirectory.getChildFile(CLIInputArr[1]);
     let targetDir = currentDirectory.getChild(CLIInputArr[1]);
+    let target = rootDirectory;
 
-    if(targetFile){
+    //rm Absolute Path//
+    if(CLIInputArr[1][0] == "/"){
+      //配列を作って、
+      let APathArr = CLIInputArr[1].trim().split("/");
+      //最後まで辿っていく
+      for(let i=0; i<APathArr.length-1; i++){
+      //[0]はただの空欄だから。
+      if(i == 0)continue;
+      //rootからのpathと,ユーザーのpathが同じだったら
+      else if(target.name == APathArr[i]){
+        target = target.next;    
+       }
+      else if(target.name != APathArr[i]){
+        message = "this path doesnt exist brah";
+        //break;
+      }   
+      }
+
+      //ループ後最後の要素が、fileかdirか判定
+      //同じ名前でfile,dirが存在する場合があるから
+      if(message == ""){
+      targetFile = currentDirectory.getChildFile(target.name);
+      targetDir = currentDirectory.getChild(target.name);
+      //ループの最後の要素のnodeをdirかfileか確かめて、
+      //
+      let rmTarget = target instanceof File ? targetFile : targetDir;
+      //rmTargetの
+      }
+    }
+    //rm Absolute Path//
+
+    else if(targetFile){
     //currentDirectory.childrenのindexを取得
     let targetIndex = currentDirectory.children.indexOf(targetFile);
     //配列から削除
@@ -339,6 +371,7 @@ function submitSearch(event) {
     else{
       message = `that dir/file doesnt exist`;
     }
+
     appendInputValue(CLIOutputDiv, CLITextInput.value, message);
     CLITextInput.value = "";
   }
@@ -450,20 +483,65 @@ function submitSearch(event) {
   let message = "";
   //"setContent file名 content"にしたらenterの必要ないね
   let targetFile = currentDirectory.getChildFile(CLIInputArr[1]);
-  //let file = CLIInputArr[1];
+  let target = rootDirectory;
+  let APathArr = CLIInputArr[1].trim().split("/");
+  //Absolute//
+  if(CLIInputArr[1][0] == "/"){
+    
+    //最後はfile名だから、その一個前だから-2
+    for(let i=0; i<APathArr.length-2; i++){
+      //[0]はただの空欄だから。
+      if(i == 0)continue;
+      //rootからのpathと,ユーザーのpathが同じだったら
+      else if(target.name == APathArr[i]){
+        target = target.next;    
+       }
+      else if(target.name != APathArr[i]){
+        message = "this path doesnt exist brah";
+      }   
+      }
+
+  if(message == ""){
+    //fileタイプのNode
+    targetFile = target.getChildFile(APathArr[APathArr.length-1]);
+    targetFile.content = CLIInputArr[2]; 
+    message = `${APathArr[APathArr.length-1]}'s content saved. content: ${targetFile.content}`;
+  }
+  }
+  //Absolute//
+
+  //Relative//
+  else if(CLIInputArr[1].indexOf("/") != -1){
+    target = currentDirectory;
+    let RPathArr = CLIInputArr[1].trim().split("/");
+    console.log(RPathArr);
+    //fileではなく、直前のdirから探すから、-2
+    for(let i=0; i<RPathArr.length-2; i++){
+      //[0]はただの空欄だから。relativeの場合はどうなん?
+      //if(i == 0)continue;
+      //rootからのpathと,ユーザーのpathが同じだったら
+      if(target.name == RPathArr[i]){
+        target = target.next;    
+       }
+      else if(target.name != RPathArr[i]){
+        message = "this path doesnt exist brah";
+      }   
+      }
+      console.log("target of relative setContent" + target.name);
+      console.log(message);
+    if(message == ""){
+    targetFile = target.getChildFile(RPathArr[RPathArr.length-1]);
+    targetFile.content = CLIInputArr[2]; 
+    message = `${RPathArr[RPathArr.length-1]}'s content saved. content: ${targetFile.content}`;
+    }
+  }
+  //Relative//
+
   // もしファイル名が存在したら、
-  if (targetFile && CLIInputArr[2] !== undefined) {
-    console.log(CLIInputArr[2]);
-      // let targetFile = currentDirectory.getChildFile(file);
-        // ファイルの内容をセット
+  else if (targetFile && CLIInputArr[2] !== undefined) {
     targetFile.content = CLIInputArr[2]; 
     message = `${targetFile.fileName}'s content saved. content: ${targetFile.content}`;
   }
-  //この機能は実装しない↓//
-  //存在しなかったらその場で新しく作り、それにcontentを追加
-  // else if(!targetFile){
-  //   console.log("make file.name[1] then add content in it");
-  // } 
   
   else {
     message = `file doesnt exist or you just wrote nothing lol`;
@@ -475,14 +553,74 @@ function submitSearch(event) {
 else if (CLIInputArr[0] == "print") {
   let message = "";
   let targetFile = currentDirectory.getChildFile(CLIInputArr[1]);
-  if(targetFile && targetFile.content != undefined)
+  let target = rootDirectory;
+  
+
+
+  //Absolute
+  if(CLIInputArr[1][0] == "/"){
+  let APathArr = CLIInputArr[1].trim().split("/");
+
+  //最後はfile名だから、その一個前だから-2
+  for(let i=0; i<APathArr.length-2; i++){
+      //[0]はただの空欄だから。
+      if(i == 0)continue;
+      //rootからのpathと,ユーザーのpathが同じだったら
+      else if(target.name == APathArr[i]){
+        target = target.next;    
+       }
+      else if(target.name != APathArr[i]){
+        message = "this path doesnt exist brah";
+      }   
+      }
+
+    if(message == ""){
+      //直前のdirに存在しているfile.contentをmessageに挿入
+      targetFile = target.getChildFile(APathArr[APathArr.length-1]);
+      message = targetFile.content;
+      console.log("message" + message);
+      console.log("直前のdir名: " + target.name);
+      console.log("ファイル名: " + targetFile.fileName);
+      console.log("そのファイルの内容: " + targetFile.content);
+    }
+    console.log("message" + message);
+  }
+
+  //Relative path//
+  else if(CLIInputArr[1].indexOf("/") != -1){
+    target = currentDirectory;
+    let RPathArr = CLIInputArr[1].trim().split("/");
+
+    //fileではなく、直前のdirから探すから、-2
+    for(let i=0; i<RPathArr.length-2; i++){
+      console.log("print relative loop")
+      if(target.name == RPathArr[i]){
+        target = target.next;    
+       }
+      else if(target.name != RPathArr[i]){
+        message = "this path doesnt exist brah";
+      }   
+      }
+
+      if(message ==""){
+       targetFile = target.getChildFile(RPathArr[RPathArr.length-1]);
+       message = targetFile.content;
+      }
+  
+  }
+  //Relative path//
+
+  //通常の
+  else if(targetFile && targetFile.content != undefined){
   message = targetFile.content;
-  else message ="no content or file dosent exist";
+  }
+
+  else{message ="no content or file dosent exist";}
+
 
   appendInputValue(CLIOutputDiv, CLITextInput.value, message);
   CLITextInput.value = "";
 }
-
 //例外処理
 else{
       appendInputValue(CLIOutputDiv, errorMessage, "");
@@ -491,8 +629,18 @@ else{
 }
 }
 
+//矢印機能
+document.addEventListener("keydown", function(event) {
+  if (event.key === "ArrowUp") {
+    console.log("上矢印が押されました");
+  } else if (event.key === "ArrowDown") {
+    console.log("下矢印が押されました");
+  }
+});
 
 
+
+//appendInputValue(CLIOutputDiv, CLITextInput.value, message);
 function appendInputValue(parent, value, message) {
   
   parent.innerHTML +=
